@@ -1,0 +1,68 @@
+---
+- name: Setup kiosk
+  hosts: kiosk
+
+  tasks:
+  # - name: Ensure raspi-config is up to date
+  #   become: true
+  #   shell: "raspi-config nonint do_update"
+  #   changed_when: False
+
+  - name: Set autologin
+    become: true
+    shell: "raspi-config nonint do_boot_behaviour B2"
+    # There is no output from this command, so its difficult to see when the mode has changed
+  
+  - name: Disable overscan
+    become: true
+    shell: "raspi-config nonint do_overscan 0"
+
+  - name: Update packages
+    become: true
+    ansible.builtin.apt:
+      upgrade: safe
+      update_cache: yes
+
+  - name: Install desktop packages
+    become: true
+    ansible.builtin.apt:
+      install_recommends: false
+      state: present
+      pkg:
+      - xserver-xorg
+      - x11-xserver-utils
+      - xinit
+      - openbox
+
+  - name: Install chromium
+    become: true
+    ansible.builtin.apt:
+      install_recommends: false
+      state: present
+      name: chromium-browser
+
+  - name: Configure openbox autostart
+    become: true
+    ansible.builtin.blockinfile:
+      path: /etc/xdg/openbox/autostart
+      block: |
+        # Disable screen saver / screen blanking / power management
+        xset s off
+        xset s noblank
+        xset -dpms
+        #
+        # Allow quitting X server with CTRL-ALT-Backspace
+        setxkbmap -option terminate:ctrl_alt_bksp
+        #
+        # Start chromium in kiosk mode
+        sed -i 's/"exited_cleanly":false/"exited_cleanly":true/' ~/.config/chromium/'Local State'
+        sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]\+"/"exit_type":"Normal"/' ~/.config/chromium/Default/Preferences
+        chromium-browser --disable-infobars --kiosk https://bit.ly/shelford_kiosk
+
+  - name: Start window manager
+    ansible.builtin.lineinfile:
+      path: /home/pi/.bash_profile
+      create: true
+      line: '[[ -z $DISPLAY && $XDG_VTNR -eq 1 ]] && startx -- -nocursor'
+
+
