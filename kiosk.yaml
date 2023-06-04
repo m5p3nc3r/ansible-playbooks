@@ -2,20 +2,26 @@
 - name: Setup kiosk
   hosts: kiosk
 
+  vars:
+    username: kiosk
+
   tasks:
   # - name: Ensure raspi-config is up to date
   #   become: true
   #   shell: "raspi-config nonint do_update"
   #   changed_when: False
 
+
+
+
   - name: Set autologin
     become: true
     shell: "raspi-config nonint do_boot_behaviour B2"
     # There is no output from this command, so its difficult to see when the mode has changed
   
-  - name: Disable overscan
+  - name: Enable overscan
     become: true
-    shell: "raspi-config nonint do_overscan 0"
+    shell: "raspi-config nonint do_overscan 1"
 
   - name: Update packages
     become: true
@@ -32,6 +38,7 @@
       - xserver-xorg
       - x11-xserver-utils
       - xinit
+      - xdotool
       - openbox
 
   - name: Install chromium
@@ -41,11 +48,22 @@
       state: present
       name: chromium-browser
 
+  - name: Install userspace apps
+    become: true
+    ansible.builtin.apt:
+      install_recommends: false
+      state: present
+      name: jq
+
   - name: Configure openbox autostart
     become: true
     ansible.builtin.blockinfile:
       path: /etc/xdg/openbox/autostart
       block: |
+        # Read environment from ~kiosk/config.json
+        # WEBSITE=$(sed -ne 's/WEBSITE=\(.*\)$/\1/p' /home/kiosksettings)
+        WEBSITE=$(jq .website ~/kiosk/config.json | sed -e 's/^"//' -e 's/"$//')
+        #
         # Disable screen saver / screen blanking / power management
         xset s off
         xset s noblank
@@ -53,16 +71,78 @@
         #
         # Allow quitting X server with CTRL-ALT-Backspace
         setxkbmap -option terminate:ctrl_alt_bksp
+        # Start commands script
+        cd /home/kiosk && ./control.sh &
         #
         # Start chromium in kiosk mode
         sed -i 's/"exited_cleanly":false/"exited_cleanly":true/' ~/.config/chromium/'Local State'
         sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]\+"/"exit_type":"Normal"/' ~/.config/chromium/Default/Preferences
-        chromium-browser --disable-infobars --kiosk https://bit.ly/shelford_kiosk
+        chromium-browser --disable-infobars --kiosk ${WEBSITE:=https://bit.ly/shelford_kiosk}
 
   - name: Start window manager
     ansible.builtin.lineinfile:
-      path: /home/pi/.bash_profile
+      path: /home/{{ username }}/.bash_profile
       create: true
       line: '[[ -z $DISPLAY && $XDG_VTNR -eq 1 ]] && startx -- -nocursor'
 
+  - name: Setup cron job to reload website on a schedule
+    ansible.builtin.cron:
+      name: "Reload kiosk"
+      minute: "0"
+      hour: "0,2,4,6,8,10,12,14,16,18,20,22"
+      job: "DISPLAY=:0.0 xdotool key ctrl+r"
+  
+  - name: Install Docker
+    ansible.builtin.include_tasks:
+      file: tasks/install_docker.yaml
 
+  - name: Create kiosk config directory
+    ansible.builtin.file:
+      path: /home/{{ username }}/kiosk
+      state: directory
+      mode: '0777'
+
+  - name: Create named pipe for comms from container
+    command:
+      cmd: mkfifo -m 0666 /home/{{ username }}/commands
+      creates: /home/{{ username }}/commands
+
+  - name: Create commands script to enable piping commands from containers
+    copy:
+      dest: /home/{{ username }}/control.sh
+      mode: 0755
+      owner: "{{ username }}"
+      content: |
+        #!/bin/sh
+        while true
+        do
+          while read -r cmd; do
+            echo Command ${cmd}
+            case $cmd in
+              "restart")
+                sudo reboot
+              ;;
+              *)
+                echo "Unknown command '${cmd}'"
+              ;;
+            esac
+          done < commands
+        done
+
+
+# NOTE: This fails first time, but works after a manual pull from the target
+# NOTE: get the error -> 'Connection aborted.', PermissionError(13, 'Permission denied')
+  - name: Install kiosk admin console
+    community.docker.docker_compose:
+      project_name: kiosk
+      pull: true
+      restarted: true
+      definition:
+        kiosk:
+          image: hub.apptabulous.co.uk/apptabulous/kiosk:latest
+          restart: "always"
+          ports:
+          - "80:3000"
+          volumes:
+          - "/home/{{ username }}/kiosk:/app/kiosk"
+          - "/home/{{ username }}/commands:/app/commands"
