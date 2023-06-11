@@ -1,2 +1,5 @@
 [kiosk]
-pi@kiosk64.local
+kiosk@kiosk.localdomain
+
+[frontend]
+rpi4-2.local

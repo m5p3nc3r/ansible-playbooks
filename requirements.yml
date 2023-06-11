@@ -1,0 +1,9 @@
+---
+collections:
+- community.docker
+
+roles:
+- geerlingguy.certbot
+- geerlingguy.git
+- geerlingguy.nginx
+- geerlingguy.docker
