@@ -5,6 +5,16 @@
   vars:
     username: kiosk
 
+    docker_add_repo: true
+    docker_users:
+      - "{{ username }}"
+
+
+  roles:
+    - role: geerlingguy.docker
+      become: true
+  
+
   tasks:
   # - name: Ensure raspi-config is up to date
   #   become: true
@@ -79,6 +89,12 @@
         sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]\+"/"exit_type":"Normal"/' ~/.config/chromium/Default/Preferences
         chromium-browser --disable-infobars --kiosk ${WEBSITE:=https://bit.ly/shelford_kiosk}
 
+  - name: Configure openbox-session
+    ansible.builtin.blockinfile:
+      path: /home/{{ username }}/.xinitrc
+      create: true
+      line: "exec openbox-session"
+
   - name: Start window manager
     ansible.builtin.lineinfile:
       path: /home/{{ username }}/.bash_profile
@@ -92,10 +108,6 @@
       hour: "0,2,4,6,8,10,12,14,16,18,20,22"
       job: "DISPLAY=:0.0 xdotool key ctrl+r"
   
-  - name: Install Docker
-    ansible.builtin.include_tasks:
-      file: tasks/install_docker.yaml
-
   - name: Create kiosk config directory
     ansible.builtin.file:
       path: /home/{{ username }}/kiosk
@@ -130,19 +142,14 @@
         done
 
 
-# NOTE: This fails first time, but works after a manual pull from the target
-# NOTE: get the error -> 'Connection aborted.', PermissionError(13, 'Permission denied')
-  - name: Install kiosk admin console
-    community.docker.docker_compose:
-      project_name: kiosk
-      pull: true
-      restarted: true
-      definition:
-        kiosk:
-          image: hub.apptabulous.co.uk/apptabulous/kiosk:latest
-          restart: "always"
-          ports:
-          - "80:3000"
-          volumes:
-          - "/home/{{ username }}/kiosk:/app/kiosk"
-          - "/home/{{ username }}/commands:/app/commands"
+  - name: Start admin console container
+    community.docker.docker_container:
+      name: website
+      image: hub.apptabulous.co.uk/apptabulous/kiosk:latest
+      restart_policy: always
+      ports:
+      - "80:3000"
+      volumes:
+      - "/home/{{ username }}/kiosk:/app/kiosk"
+      - "/home/{{ username }}/commands:/app/commands"
+      state: started

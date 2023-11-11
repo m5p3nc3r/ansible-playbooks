@@ -37,46 +37,41 @@
       become: true
 
   tasks:
+    - name: Copy reverse proxy configuration to host
+      become: true
+      ansible.builtin.copy:
+        src: apptabulous/reverseproxy
+        dest: /etc
 
-  # - name: Install Docker
-  #   ansible.builtin.include_tasks:
-  #     file: tasks/install_docker.yaml
+    - name: Start reverse proxy container
+      community.docker.docker_container:
+        name: reverse_proxy
+        image: nginx:mainline-alpine-slim
+        restart_policy: always
+        volumes:
+          - /etc/reverseproxy/conf.d:/etc/nginx/conf.d
+          - /etc/letsencrypt:/etc/letsencrypt
+        ports:
+          - "80:80"
+          - "443:443"
+        state: started
 
-  - name: Copy referse proxy configuration to host
-    become: true
-    ansible.builtin.copy:
-      src: apptabulous/reverseproxy
-      dest: /etc
+    - name: Start docker registry
+      community.docker.docker_container:
+        name: registry
+        image: registry:2
+        restart_policy: always
+        ports:
+          - "5000:5000"
+        state: started
 
-  - name: Start reverse proxy container
-    community.docker.docker_container:
-      name: reverse_proxy
-      image: nginx:mainline-alpine-slim
-      volumes:
-      - /etc/reverseproxy/conf.d:/etc/nginx/conf.d
-      - /etc/letsencrypt:/etc/letsencrypt
-      ports:
-      - "80:80"
-      - "443:443"
-      state: started
-
-  - name: Start docker registry
-    community.docker.docker_container:
-      name: registry
-      image: registry:2
-      restart_policy: always
-      ports:
-        - "5000:5000"
-      state: started
-
-# NOTE: This will fail on the first run because the container has not been
-#       uploaded to the registry yet
-  - name: Start website
-    community.docker.docker_container:
-      name: website
-      image: hub.apptabulous.co.uk/apptabulous/website
-      restart_policy: always
-      ports:
-        - "3000:3000"
-      state: started
-
+    # NOTE: This will fail on the first run because the container has not been
+    #       uploaded to the registry yet
+    - name: Start website
+      community.docker.docker_container:
+        name: website
+        image: hub.apptabulous.co.uk/apptabulous/website
+        restart_policy: always
+        ports:
+          - "3000:3000"
+        state: started
