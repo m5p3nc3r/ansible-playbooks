@@ -18,11 +18,14 @@
           - "apptabulous.co.uk"
           - "www.apptabulous.co.uk"
           - "hub.apptabulous.co.uk"
+          - "m5p3nc3r.co.uk"
+          - "www.m5p3nc3r.co.uk"
 
     certbot_repo: https://github.com/certbot/certbot.git
     certbot_version: master
     certbot_keep_updated: true
     certbot_dir: /opt/certbot
+    certbot_create_extra_args: ""
 
     docker_add_repo: true
     docker_users:
@@ -65,12 +68,18 @@
           - "5000:5000"
         state: started
 
+    - name: Log into ghcf.io registry
+      community.general.docker_login:
+        registry: ghcr.io
+        username: "{{ secrets.GITHUB_ACTOR }}"
+        password: "{{ secrets.GITHUB_TOKEN }}"
+
     # NOTE: This will fail on the first run because the container has not been
     #       uploaded to the registry yet
     - name: Start website
       community.docker.docker_container:
         name: website
-        image: hub.apptabulous.co.uk/apptabulous/website
+        image: ghcr.io/m5p3nc3r/website:main
         restart_policy: always
         ports:
           - "3000:3000"
