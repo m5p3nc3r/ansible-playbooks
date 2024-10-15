@@ -1,0 +1,8 @@
+#!/bin/bash
+# Ansible managed
+
+#echo "starting service nginx"
+#systemctl start nginx
+
+echo "Restarting reverse_proxy container"
+docker restart reverse_proxy
