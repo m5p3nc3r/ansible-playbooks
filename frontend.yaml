@@ -81,8 +81,6 @@
         username: "{{ secrets.GITHUB_ACTOR }}"
         password: "{{ secrets.GITHUB_TOKEN }}"
 
-    # NOTE: This will fail on the first run because the container has not been
-    #       uploaded to the registry yet
     - name: Start website
       community.docker.docker_container:
         name: website
@@ -90,4 +88,14 @@
         restart_policy: always
         ports:
           - "3000:3000"
+        state: started
+
+    - name: Start watchtower
+      community.docker.docker_container:
+        name: watchtower
+        image: containrrr/watchtower
+        restart_policy: always
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - /home/matt/.docker/config.json:/config.json
         state: started
