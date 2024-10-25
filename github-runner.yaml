@@ -1,0 +1,22 @@
+---
+- name: Github Runner setup
+  hosts: github-runners
+
+  vars:
+    username: matt
+
+    docker_add_repo: true
+    docker_users:
+      - "{{ username }}"
+
+  roles:
+    - role: geerlingguy.docker
+      become: true
+
+    - role: compscidr.github_runner.github_runner
+      vars:
+        github_runner_install_docker: false
+        github_runner_personal_access_token: "{{ secrets.GITHUB_ACTIONS_TOKEN }}"
+        github_runner_name: "aarch64-rpi5-runner"
+        github_runner_repo: "m5p3nc3r/website"
+        github_runner_lables: "aarch64, rpi5"

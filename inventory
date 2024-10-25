@@ -1,2 +1,5 @@
 [frontend]
 rpi4-2.localdomain
+
+[github-runners]
+rpi5-1.localdomain
