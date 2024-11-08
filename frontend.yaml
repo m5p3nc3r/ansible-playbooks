@@ -87,6 +87,8 @@
         name: website
         image: ghcr.io/m5p3nc3r/website:main
         restart_policy: always
+        volumes:
+          - /home/matt/public/apps:/app/public/apps
         ports:
           - "3000:3000"
         state: started
