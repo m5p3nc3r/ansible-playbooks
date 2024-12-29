@@ -3,3 +3,4 @@
 
 #echo "stopping service nginx"
 #systemctl stop nginx
+docker stop reverse_proxy
