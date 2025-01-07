@@ -20,3 +20,13 @@
         github_runner_name: "aarch64-rpi5-runner"
         github_runner_repo: "m5p3nc3r/website"
         github_runner_lables: "aarch64, rpi5"
+
+  tasks:
+    - name: Start watchtower
+      community.docker.docker_container:
+        name: watchtower
+        image: containrrr/watchtower
+        restart_policy: always
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+        state: started
