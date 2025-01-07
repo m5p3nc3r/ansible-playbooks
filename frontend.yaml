@@ -57,7 +57,8 @@
     - name: Start reverse proxy container
       community.docker.docker_container:
         name: reverse_proxy
-        image: nginx:mainline-alpine-slim
+        #image: nginx:1.26.2-alpine-slim
+        image: ghcr.io/m5p3nc3r/nginx-keyval:main
         restart_policy: always
         volumes:
           - /etc/reverseproxy/conf.d:/etc/nginx/conf.d
