@@ -83,7 +83,7 @@
         username: "{{ secrets.GITHUB_ACTOR }}"
         password: "{{ secrets.GITHUB_TOKEN }}"
 
-    - name: Start website
+    - name: Start m5p3nc3r website
       community.docker.docker_container:
         name: website
         image: ghcr.io/m5p3nc3r/website:main
@@ -92,6 +92,15 @@
           - /home/matt/public/apps:/app/public/apps
         ports:
           - "3000:3000"
+        state: started
+
+    - name: Start Apptabulous website
+      community.docker.docker_container:
+        name: apptabulous_website
+        image: ghcr.io/m5p3nc3r/apptabulous_website:main
+        restart_policy: always
+        ports:
+          - "3001:3000"
         state: started
 
     - name: Start watchtower
