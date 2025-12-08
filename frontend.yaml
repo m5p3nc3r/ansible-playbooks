@@ -107,7 +107,7 @@
     - name: Start watchtower
       community.docker.docker_container:
         name: watchtower
-        image: containrrr/watchtower
+        image: nickfedor/watchtower
         restart_policy: always
         volumes:
           - /var/run/docker.sock:/var/run/docker.sock
