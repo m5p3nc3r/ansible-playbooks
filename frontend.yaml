@@ -93,6 +93,8 @@
           - /home/matt/public/apps:/app/public/apps
         ports:
           - "3000:3000"
+        env:
+          NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: "{{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}"
         state: started
 
     - name: Start Apptabulous website
